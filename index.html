@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch File Renamer</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- JSZip for bundling multiple files into a single ZIP download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <style>
+        /* Custom drag-and-drop active state styles */
+        .drag-over {
+            border-color: #3b82f6 !important; /* Tailwind blue-500 */
+            background-color: #eff6ff !important; /* Tailwind blue-50 */
+        }
+        
+        /* Smooth transitions */
+        .transition-all {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 300ms;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans text-gray-800 p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <div class="text-center space-y-2">
+            <h1 class="text-3xl font-bold text-gray-900 flex items-center justify-center gap-3">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                Batch File Renamer
+            </h1>
+            <p class="text-gray-500">Add a prefix to multiple files instantly. 100% secure, processes locally in your browser.</p>
+        </div>
+
+        <!-- Main Configuration Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
+            
+            <div class="space-y-6">
+                <!-- Prefix Input -->
+                <div>
+                    <label for="prefixInput" class="block text-sm font-medium text-gray-700 mb-2">
+                        1. Type your desired prefix
+                    </label>
+                    <input type="text" id="prefixInput" 
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-400" 
+                        placeholder="e.g., invoice_, draft-, 2024_project_">
+                    <p class="text-xs text-gray-500 mt-2">Note: Include spaces or underscores if you want them to separate the prefix from the original name.</p>
+                </div>
+
+                <!-- File Selection Dropzone -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        2. Select your files
+                    </label>
+                    
+                    <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-all cursor-pointer">
+                        <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <p class="text-gray-700 font-medium mb-1">Click to browse or drag and drop files here</p>
+                        <p class="text-sm text-gray-500">Supports: PDF, DOC, PNG, JPEG, JPG, SVG</p>
+                        
+                        <!-- Hidden File Input -->
+                        <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.png,.jpeg,.jpg,.svg" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview & Action Area -->
+        <div id="previewArea" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Preview & Download</h2>
+                    <p class="text-sm text-gray-500" id="fileCountText">0 files selected</p>
+                </div>
+                <button id="clearBtn" class="text-sm px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium">
+                    Clear List
+                </button>
+            </div>
+
+            <!-- List of Files -->
+            <ul id="fileList" class="space-y-3 mb-8 max-h-96 overflow-y-auto pr-2">
+                <!-- Dynamically populated via JS -->
+            </ul>
+
+            <!-- Batch Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100">
+                <button id="downloadZipBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-sm transition-colors flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download All as ZIP
+                </button>
+                <button id="downloadIndividualBtn" class="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-lg shadow-sm transition-colors flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Individually
+                </button>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3"></div>
+
+    <script>
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const prefixInput = document.getElementById('prefixInput');
+        const previewArea = document.getElementById('previewArea');
+        const fileList = document.getElementById('fileList');
+        const fileCountText = document.getElementById('fileCountText');
+        const clearBtn = document.getElementById('clearBtn');
+        const downloadZipBtn = document.getElementById('downloadZipBtn');
+        const downloadIndividualBtn = document.getElementById('downloadIndividualBtn');
+
+        // State
+        let currentFiles = [];
+
+        // --- Drag & Drop Handling ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            processFiles(files);
+        }
+
+        // --- Standard File Input Handling ---
+        fileInput.addEventListener('change', function() {
+            processFiles(this.files);
+            // Reset input so selecting the same files again triggers the 'change' event
+            this.value = ''; 
+        });
+
+        // --- Core Logic ---
+        function processFiles(files) {
+            // Append new files to existing array
+            const newFiles = Array.from(files);
+            currentFiles = [...currentFiles, ...newFiles];
+            renderPreview();
+            
+            if (newFiles.length > 0) {
+                showToast(`Added ${newFiles.length} file(s)`);
+            }
+        }
+
+        // Re-render when prefix changes
+        prefixInput.addEventListener('input', renderPreview);
+
+        // Clear files
+        clearBtn.addEventListener('click', () => {
+            currentFiles = [];
+            renderPreview();
+            prefixInput.value = '';
+            showToast("File list cleared", "info");
+        });
+
+        // Update the UI
+        function renderPreview() {
+            if (currentFiles.length === 0) {
+                previewArea.classList.add('hidden');
+                return;
+            }
+            
+            previewArea.classList.remove('hidden');
+            fileList.innerHTML = '';
+            fileCountText.textContent = `${currentFiles.length} file(s) ready for renaming`;
+            
+            const prefix = prefixInput.value;
+            
+            currentFiles.forEach((file, index) => {
+                const newName = prefix ? `${prefix}${file.name}` : file.name;
+                const iconSVG = getIconForFile(file.name);
+                
+                const li = document.createElement('li');
+                li.className = 'flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 gap-4 hover:border-blue-300 transition-colors group';
+                
+                li.innerHTML = `
+                    <div class="flex items-center gap-4 flex-1 min-w-0">
+                        <div class="flex-shrink-0">
+                            ${iconSVG}
+                        </div>
+                        <div class="flex-1 min-w-0 flex flex-col">
+                            <p class="text-xs text-gray-400 line-through truncate" title="${file.name}">${file.name}</p>
+                            <p class="text-sm font-semibold text-gray-900 truncate" title="${newName}">${newName}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded font-mono">${formatBytes(file.size)}</span>
+                        <button onclick="downloadSingle(${index})" class="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition-colors" title="Download this file">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        </button>
+                        <button onclick="removeFile(${index})" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors" title="Remove from list">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                `;
+                fileList.appendChild(li);
+            });
+        }
+
+        // Get appropriate SVG icon based on file extension
+        function getIconForFile(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (['png', 'jpg', 'jpeg', 'svg'].includes(ext)) {
+                return `<svg class="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`;
+            } else if (['pdf'].includes(ext)) {
+                return `<svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>`;
+            } else if (['doc', 'docx'].includes(ext)) {
+                return `<svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`;
+            } else {
+                 return `<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>`;
+            }
+        }
+
+        // Format File Sizes
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // Remove individual file
+        window.removeFile = function(index) {
+            currentFiles.splice(index, 1);
+            renderPreview();
+        };
+
+        // Download single file
+        window.downloadSingle = function(index) {
+            const file = currentFiles[index];
+            const prefix = prefixInput.value;
+            const newName = prefix ? `${prefix}${file.name}` : file.name;
+            triggerDownload(file, newName);
+        };
+
+        // Utility to trigger DOM download
+        function triggerDownload(file, newName) {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = newName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+        }
+
+        // --- Batch Downloads ---
+
+        // 1. Download Individually (Iterative)
+        downloadIndividualBtn.addEventListener('click', () => {
+            if (currentFiles.length === 0) return;
+            
+            const prefix = prefixInput.value;
+            let index = 0;
+
+            // Using interval to stagger downloads to prevent browser blocking multiple popups
+            const interval = setInterval(() => {
+                if (index >= currentFiles.length) {
+                    clearInterval(interval);
+                    showToast("Downloads started!");
+                    return;
+                }
+                const file = currentFiles[index];
+                const newName = prefix ? `${prefix}${file.name}` : file.name;
+                triggerDownload(file, newName);
+                index++;
+            }, 300);
+        });
+
+        // 2. Download as ZIP
+        downloadZipBtn.addEventListener('click', async () => {
+            if (currentFiles.length === 0) return;
+            
+            if (typeof JSZip === 'undefined') {
+                showToast("ZIP library failed to load. Please use individual downloads.", "error");
+                return;
+            }
+
+            const prefix = prefixInput.value;
+            const zip = new JSZip();
+            
+            // UI Feedback
+            const originalContent = downloadZipBtn.innerHTML;
+            downloadZipBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                Zipping...
+            `;
+            downloadZipBtn.disabled = true;
+            downloadZipBtn.classList.add('opacity-75', 'cursor-not-allowed');
+            
+            // Add files to ZIP
+            currentFiles.forEach(file => {
+                 const newName = prefix ? `${prefix}${file.name}` : file.name;
+                 zip.file(newName, file);
+            });
+            
+            try {
+                // Generate and download
+                const content = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = prefix ? `${prefix}renamed_files.zip` : 'renamed_files.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+                
+                showToast("ZIP file created successfully!");
+            } catch (error) {
+                console.error("Error generating zip", error);
+                showToast("Failed to generate ZIP file.", "error");
+            } finally {
+                // Restore UI
+                downloadZipBtn.innerHTML = originalContent;
+                downloadZipBtn.disabled = false;
+                downloadZipBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        });
+
+        // --- Custom Toast Notifications ---
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            
+            const bgColors = {
+                success: 'bg-gray-800 text-white',
+                error: 'bg-red-600 text-white',
+                info: 'bg-blue-600 text-white'
+            };
+
+            toast.className = `px-6 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 translate-y-10 opacity-0 ${bgColors[type]}`;
+            toast.textContent = message;
+            
+            document.getElementById('toastContainer').appendChild(toast);
+            
+            // Animate In
+            setTimeout(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            }, 10);
+            
+            // Remove after 3s
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
