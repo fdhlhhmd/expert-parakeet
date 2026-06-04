@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Batch File Renamer</title>
     
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- JSZip for bundling multiple files into a single ZIP download -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
     <style>
@@ -30,49 +28,66 @@
 
     <div class="max-w-4xl mx-auto space-y-6">
         
-        <!-- Header -->
         <div class="text-center space-y-2">
             <h1 class="text-3xl font-bold text-gray-900 flex items-center justify-center gap-3">
                 <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                 Batch File Renamer
             </h1>
-            <p class="text-gray-500">Add a prefix to multiple files instantly. 100% secure, processes locally in your browser.</p>
+            <p class="text-gray-500">Find, replace, and add prefixes to multiple files instantly. 100% secure, processes locally in your browser.</p>
         </div>
 
-        <!-- Main Configuration Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
             
             <div class="space-y-6">
-                <!-- Prefix Input -->
-                <div>
-                    <label for="prefixInput" class="block text-sm font-medium text-gray-700 mb-2">
-                        1. Type your desired prefix
-                    </label>
-                    <input type="text" id="prefixInput" 
-                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-400" 
-                        placeholder="e.g., invoice_, draft-, 2024_project_">
-                    <p class="text-xs text-gray-500 mt-2">Note: Include spaces or underscores if you want them to separate the prefix from the original name.</p>
+                <div class="space-y-4">
+                    <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-wider">1. Renaming Rules</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="findInput" class="block text-sm font-medium text-gray-700 mb-1">
+                                Find (Keyword)
+                            </label>
+                            <input type="text" id="findInput" 
+                                class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-400" 
+                                placeholder="e.g., case_study">
+                        </div>
+
+                        <div>
+                            <label for="replaceInput" class="block text-sm font-medium text-gray-700 mb-1">
+                                Replace With
+                            </label>
+                            <input type="text" id="replaceInput" 
+                                class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-400" 
+                                placeholder="e.g., final_report">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="prefixInput" class="block text-sm font-medium text-gray-700 mb-1">
+                            Add Prefix (Optional)
+                        </label>
+                        <input type="text" id="prefixInput" 
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-400" 
+                            placeholder="e.g., 2024_">
+                    </div>
                 </div>
 
-                <!-- File Selection Dropzone -->
+                <hr class="border-gray-200">
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        2. Select your files
-                    </label>
+                    <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-3">2. Select Files</h3>
                     
                     <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-all cursor-pointer">
                         <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                         <p class="text-gray-700 font-medium mb-1">Click to browse or drag and drop files here</p>
                         <p class="text-sm text-gray-500">Supports: PDF, DOC, PNG, JPEG, JPG, SVG</p>
                         
-                        <!-- Hidden File Input -->
                         <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.png,.jpeg,.jpg,.svg" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Preview & Action Area -->
         <div id="previewArea" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 hidden">
             <div class="flex justify-between items-center mb-6">
                 <div>
@@ -84,27 +99,23 @@
                 </button>
             </div>
 
-            <!-- List of Files -->
             <ul id="fileList" class="space-y-3 mb-8 max-h-96 overflow-y-auto pr-2">
-                <!-- Dynamically populated via JS -->
-            </ul>
+                </ul>
 
-            <!-- Batch Action Buttons -->
             <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100">
                 <button id="downloadZipBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-sm transition-colors flex justify-center items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Download All as ZIP
+                    Download Selected as ZIP
                 </button>
                 <button id="downloadIndividualBtn" class="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-lg shadow-sm transition-colors flex justify-center items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Download Individually
+                    Download Selected Individually
                 </button>
             </div>
         </div>
         
     </div>
 
-    <!-- Toast Notification Container -->
     <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3"></div>
 
     <script>
@@ -112,6 +123,8 @@
         const fileInput = document.getElementById('fileInput');
         const dropZone = document.getElementById('dropZone');
         const prefixInput = document.getElementById('prefixInput');
+        const findInput = document.getElementById('findInput');
+        const replaceInput = document.getElementById('replaceInput');
         const previewArea = document.getElementById('previewArea');
         const fileList = document.getElementById('fileList');
         const fileCountText = document.getElementById('fileCountText');
@@ -119,7 +132,7 @@
         const downloadZipBtn = document.getElementById('downloadZipBtn');
         const downloadIndividualBtn = document.getElementById('downloadIndividualBtn');
 
-        // State
+        // State - Now stores objects: { data: File, selected: boolean }
         let currentFiles = [];
 
         // --- Drag & Drop Handling ---
@@ -151,15 +164,19 @@
         // --- Standard File Input Handling ---
         fileInput.addEventListener('change', function() {
             processFiles(this.files);
-            // Reset input so selecting the same files again triggers the 'change' event
             this.value = ''; 
         });
 
         // --- Core Logic ---
         function processFiles(files) {
-            // Append new files to existing array
-            const newFiles = Array.from(files);
+            // Map raw File objects into our state structure
+            const newFiles = Array.from(files).map(f => ({
+                data: f,
+                selected: true
+            }));
+            
             currentFiles = [...currentFiles, ...newFiles];
+            applySearchFilter(); // Auto-select/deselect based on current Find keyword
             renderPreview();
             
             if (newFiles.length > 0) {
@@ -167,16 +184,46 @@
             }
         }
 
-        // Re-render when prefix changes
+        // --- Filtering Logic ---
+        function applySearchFilter() {
+            const findKeyword = findInput.value;
+            if (findKeyword) {
+                currentFiles.forEach(item => {
+                    // If a find keyword is typed, only select files that contain it
+                    item.selected = item.data.name.includes(findKeyword);
+                });
+            } else {
+                // If find is empty, select everything
+                currentFiles.forEach(item => {
+                    item.selected = true;
+                });
+            }
+        }
+
+        // Re-render when inputs change
         prefixInput.addEventListener('input', renderPreview);
+        replaceInput.addEventListener('input', renderPreview);
+        
+        findInput.addEventListener('input', () => {
+            applySearchFilter();
+            renderPreview();
+        });
 
         // Clear files
         clearBtn.addEventListener('click', () => {
             currentFiles = [];
             renderPreview();
             prefixInput.value = '';
+            findInput.value = '';
+            replaceInput.value = '';
             showToast("File list cleared", "info");
         });
+
+        // Manual checkbox toggle
+        window.toggleSelection = function(index) {
+            currentFiles[index].selected = !currentFiles[index].selected;
+            renderPreview();
+        };
 
         // Update the UI
         function renderPreview() {
@@ -187,32 +234,60 @@
             
             previewArea.classList.remove('hidden');
             fileList.innerHTML = '';
-            fileCountText.textContent = `${currentFiles.length} file(s) ready for renaming`;
+            
+            const selectedCount = currentFiles.filter(f => f.selected).length;
+            fileCountText.textContent = `${selectedCount} of ${currentFiles.length} file(s) selected`;
             
             const prefix = prefixInput.value;
+            const findStr = findInput.value;
+            const replaceStr = replaceInput.value;
             
-            currentFiles.forEach((file, index) => {
-                const newName = prefix ? `${prefix}${file.name}` : file.name;
+            currentFiles.forEach((item, index) => {
+                const file = item.data;
+                let newName = file.name;
+                
+                // Only apply renaming logic if the item is selected
+                if (item.selected) {
+                    if (findStr) {
+                        // Replace occurrences of the keyword
+                        newName = newName.split(findStr).join(replaceStr);
+                    }
+                    if (prefix) {
+                        newName = `${prefix}${newName}`;
+                    }
+                }
+                
                 const iconSVG = getIconForFile(file.name);
                 
                 const li = document.createElement('li');
-                li.className = 'flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 gap-4 hover:border-blue-300 transition-colors group';
+                // Gray out UI if unselected
+                const opacityClass = item.selected ? 'opacity-100' : 'opacity-50 bg-gray-100';
+                
+                li.className = `flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 gap-4 hover:border-blue-300 transition-colors group ${opacityClass}`;
                 
                 li.innerHTML = `
                     <div class="flex items-center gap-4 flex-1 min-w-0">
+                        <input type="checkbox" onchange="toggleSelection(${index})" 
+                            class="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                            ${item.selected ? 'checked' : ''} title="Include in rename batch">
+                        
                         <div class="flex-shrink-0">
                             ${iconSVG}
                         </div>
                         <div class="flex-1 min-w-0 flex flex-col">
-                            <p class="text-xs text-gray-400 line-through truncate" title="${file.name}">${file.name}</p>
-                            <p class="text-sm font-semibold text-gray-900 truncate" title="${newName}">${newName}</p>
+                            <p class="text-xs text-gray-500 line-through truncate" title="${file.name}">${file.name}</p>
+                            <p class="text-sm font-semibold text-gray-900 truncate" title="${newName}">${item.selected ? newName : '--- Unselected ---'}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded font-mono">${formatBytes(file.size)}</span>
+                        
+                        ${item.selected ? `
                         <button onclick="downloadSingle(${index})" class="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition-colors" title="Download this file">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         </button>
+                        ` : ''}
+
                         <button onclick="removeFile(${index})" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors" title="Remove from list">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
@@ -254,10 +329,18 @@
 
         // Download single file
         window.downloadSingle = function(index) {
-            const file = currentFiles[index];
+            const item = currentFiles[index];
+            if (!item.selected) return; // Prevent downloading unselected files directly
+            
             const prefix = prefixInput.value;
-            const newName = prefix ? `${prefix}${file.name}` : file.name;
-            triggerDownload(file, newName);
+            const findStr = findInput.value;
+            const replaceStr = replaceInput.value;
+            
+            let newName = item.data.name;
+            if (findStr) newName = newName.split(findStr).join(replaceStr);
+            if (prefix) newName = `${prefix}${newName}`;
+            
+            triggerDownload(item.data, newName);
         };
 
         // Utility to trigger DOM download
@@ -276,20 +359,31 @@
 
         // 1. Download Individually (Iterative)
         downloadIndividualBtn.addEventListener('click', () => {
-            if (currentFiles.length === 0) return;
+            const selectedFiles = currentFiles.filter(f => f.selected);
+            if (selectedFiles.length === 0) {
+                showToast("No files selected to download.", "error");
+                return;
+            }
             
             const prefix = prefixInput.value;
+            const findStr = findInput.value;
+            const replaceStr = replaceInput.value;
+            
             let index = 0;
 
             // Using interval to stagger downloads to prevent browser blocking multiple popups
             const interval = setInterval(() => {
-                if (index >= currentFiles.length) {
+                if (index >= selectedFiles.length) {
                     clearInterval(interval);
                     showToast("Downloads started!");
                     return;
                 }
-                const file = currentFiles[index];
-                const newName = prefix ? `${prefix}${file.name}` : file.name;
+                const file = selectedFiles[index].data;
+                let newName = file.name;
+                
+                if (findStr) newName = newName.split(findStr).join(replaceStr);
+                if (prefix) newName = `${prefix}${newName}`;
+                
                 triggerDownload(file, newName);
                 index++;
             }, 300);
@@ -297,7 +391,12 @@
 
         // 2. Download as ZIP
         downloadZipBtn.addEventListener('click', async () => {
-            if (currentFiles.length === 0) return;
+            const selectedFiles = currentFiles.filter(f => f.selected);
+            
+            if (selectedFiles.length === 0) {
+                showToast("No files selected to ZIP.", "error");
+                return;
+            }
             
             if (typeof JSZip === 'undefined') {
                 showToast("ZIP library failed to load. Please use individual downloads.", "error");
@@ -305,6 +404,9 @@
             }
 
             const prefix = prefixInput.value;
+            const findStr = findInput.value;
+            const replaceStr = replaceInput.value;
+            
             const zip = new JSZip();
             
             // UI Feedback
@@ -317,9 +419,12 @@
             downloadZipBtn.classList.add('opacity-75', 'cursor-not-allowed');
             
             // Add files to ZIP
-            currentFiles.forEach(file => {
-                 const newName = prefix ? `${prefix}${file.name}` : file.name;
-                 zip.file(newName, file);
+            selectedFiles.forEach(item => {
+                 let newName = item.data.name;
+                 if (findStr) newName = newName.split(findStr).join(replaceStr);
+                 if (prefix) newName = `${prefix}${newName}`;
+                 
+                 zip.file(newName, item.data);
             });
             
             try {
