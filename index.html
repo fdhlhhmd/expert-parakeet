@@ -42,7 +42,7 @@
                 <div class="space-y-4">
                     <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-wider">1. Renaming Rules</h3>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="findInput" class="block text-sm font-medium text-gray-700 mb-1">
                                 Find (Keyword)
@@ -50,6 +50,17 @@
                             <input type="text" id="findInput" 
                                 class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-400" 
                                 placeholder="e.g., case_study">
+                            
+                            <div class="mt-3 flex flex-wrap gap-4">
+                                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                                    <input type="checkbox" id="checkNumbers" class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 transition-colors">
+                                    <span>Replace Numbers (0-9)</span>
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                                    <input type="checkbox" id="checkSymbols" class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 transition-colors">
+                                    <span>Replace Symbols (e.g., _, -)</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div>
@@ -58,7 +69,7 @@
                             </label>
                             <input type="text" id="replaceInput" 
                                 class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-400" 
-                                placeholder="e.g., final_report">
+                                placeholder="e.g., final_report (Leave blank to remove)">
                         </div>
                     </div>
 
@@ -125,6 +136,8 @@
         const prefixInput = document.getElementById('prefixInput');
         const findInput = document.getElementById('findInput');
         const replaceInput = document.getElementById('replaceInput');
+        const checkNumbers = document.getElementById('checkNumbers');
+        const checkSymbols = document.getElementById('checkSymbols');
         const previewArea = document.getElementById('previewArea');
         const fileList = document.getElementById('fileList');
         const fileCountText = document.getElementById('fileCountText');
@@ -169,14 +182,13 @@
 
         // --- Core Logic ---
         function processFiles(files) {
-            // Map raw File objects into our state structure
             const newFiles = Array.from(files).map(f => ({
                 data: f,
                 selected: true
             }));
             
             currentFiles = [...currentFiles, ...newFiles];
-            applySearchFilter(); // Auto-select/deselect based on current Find keyword
+            applySearchFilter(); 
             renderPreview();
             
             if (newFiles.length > 0) {
@@ -187,26 +199,41 @@
         // --- Filtering Logic ---
         function applySearchFilter() {
             const findKeyword = findInput.value;
-            if (findKeyword) {
-                currentFiles.forEach(item => {
-                    // If a find keyword is typed, only select files that contain it
-                    item.selected = item.data.name.includes(findKeyword);
-                });
-            } else {
-                // If find is empty, select everything
-                currentFiles.forEach(item => {
-                    item.selected = true;
-                });
-            }
+            const replaceNum = checkNumbers.checked;
+            const replaceSym = checkSymbols.checked;
+
+            currentFiles.forEach(item => {
+                // Strip extension for searching so we don't accidentally match ".pdf"
+                const lastDot = item.data.name.lastIndexOf('.');
+                const namePart = lastDot !== -1 ? item.data.name.substring(0, lastDot) : item.data.name;
+
+                if (!findKeyword && !replaceNum && !replaceSym) {
+                    item.selected = true; // Select all if no filters applied
+                } else {
+                    let isMatch = false;
+                    if (findKeyword && namePart.includes(findKeyword)) isMatch = true;
+                    if (replaceNum && /\d/.test(namePart)) isMatch = true; // Has numbers
+                    // Matches symbols (anything that is not a letter, number, or space)
+                    if (replaceSym && /[^a-zA-Z0-9\s]/.test(namePart)) isMatch = true; 
+                    
+                    item.selected = isMatch;
+                }
+            });
         }
 
-        // Re-render when inputs change
-        prefixInput.addEventListener('input', renderPreview);
-        replaceInput.addEventListener('input', renderPreview);
-        
-        findInput.addEventListener('input', () => {
-            applySearchFilter();
-            renderPreview();
+        // Event listeners for inputs to trigger live updates
+        [prefixInput, replaceInput, findInput].forEach(el => {
+            el.addEventListener('input', () => {
+                applySearchFilter();
+                renderPreview();
+            });
+        });
+
+        [checkNumbers, checkSymbols].forEach(el => {
+            el.addEventListener('change', () => {
+                applySearchFilter();
+                renderPreview();
+            });
         });
 
         // Clear files
@@ -216,6 +243,8 @@
             prefixInput.value = '';
             findInput.value = '';
             replaceInput.value = '';
+            checkNumbers.checked = false;
+            checkSymbols.checked = false;
             showToast("File list cleared", "info");
         });
 
@@ -224,6 +253,40 @@
             currentFiles[index].selected = !currentFiles[index].selected;
             renderPreview();
         };
+
+        // Reusable function to generate the final file name safely
+        function generateNewFileName(file, isSelected) {
+            if (!isSelected) return file.name;
+
+            const prefix = prefixInput.value;
+            const findStr = findInput.value;
+            const replaceStr = replaceInput.value;
+            
+            // Separate name from extension to protect extensions from getting replaced
+            const lastDot = file.name.lastIndexOf('.');
+            let namePart = lastDot !== -1 ? file.name.substring(0, lastDot) : file.name;
+            const extPart = lastDot !== -1 ? file.name.substring(lastDot) : '';
+
+            // Apply specific keyword replacement
+            if (findStr) {
+                namePart = namePart.split(findStr).join(replaceStr);
+            }
+            
+            // Apply numeric/symbol replacements to blocks of consecutive characters
+            if (checkNumbers.checked) {
+                namePart = namePart.replace(/\d+/g, replaceStr);
+            }
+            if (checkSymbols.checked) {
+                namePart = namePart.replace(/[^a-zA-Z0-9\s]+/g, replaceStr);
+            }
+            
+            // Apply prefix
+            if (prefix) {
+                namePart = `${prefix}${namePart}`;
+            }
+
+            return namePart + extPart;
+        }
 
         // Update the UI
         function renderPreview() {
@@ -238,31 +301,15 @@
             const selectedCount = currentFiles.filter(f => f.selected).length;
             fileCountText.textContent = `${selectedCount} of ${currentFiles.length} file(s) selected`;
             
-            const prefix = prefixInput.value;
-            const findStr = findInput.value;
-            const replaceStr = replaceInput.value;
-            
             currentFiles.forEach((item, index) => {
                 const file = item.data;
-                let newName = file.name;
-                
-                // Only apply renaming logic if the item is selected
-                if (item.selected) {
-                    if (findStr) {
-                        // Replace occurrences of the keyword
-                        newName = newName.split(findStr).join(replaceStr);
-                    }
-                    if (prefix) {
-                        newName = `${prefix}${newName}`;
-                    }
-                }
-                
+                const newName = generateNewFileName(file, item.selected);
                 const iconSVG = getIconForFile(file.name);
                 
-                const li = document.createElement('li');
                 // Gray out UI if unselected
                 const opacityClass = item.selected ? 'opacity-100' : 'opacity-50 bg-gray-100';
                 
+                const li = document.createElement('li');
                 li.className = `flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 gap-4 hover:border-blue-300 transition-colors group ${opacityClass}`;
                 
                 li.innerHTML = `
@@ -311,7 +358,6 @@
             }
         }
 
-        // Format File Sizes
         function formatBytes(bytes, decimals = 2) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
@@ -321,29 +367,19 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
         }
 
-        // Remove individual file
         window.removeFile = function(index) {
             currentFiles.splice(index, 1);
             renderPreview();
         };
 
-        // Download single file
         window.downloadSingle = function(index) {
             const item = currentFiles[index];
-            if (!item.selected) return; // Prevent downloading unselected files directly
+            if (!item.selected) return; 
             
-            const prefix = prefixInput.value;
-            const findStr = findInput.value;
-            const replaceStr = replaceInput.value;
-            
-            let newName = item.data.name;
-            if (findStr) newName = newName.split(findStr).join(replaceStr);
-            if (prefix) newName = `${prefix}${newName}`;
-            
+            const newName = generateNewFileName(item.data, true);
             triggerDownload(item.data, newName);
         };
 
-        // Utility to trigger DOM download
         function triggerDownload(file, newName) {
             const url = URL.createObjectURL(file);
             const a = document.createElement('a');
@@ -357,7 +393,6 @@
 
         // --- Batch Downloads ---
 
-        // 1. Download Individually (Iterative)
         downloadIndividualBtn.addEventListener('click', () => {
             const selectedFiles = currentFiles.filter(f => f.selected);
             if (selectedFiles.length === 0) {
@@ -365,13 +400,7 @@
                 return;
             }
             
-            const prefix = prefixInput.value;
-            const findStr = findInput.value;
-            const replaceStr = replaceInput.value;
-            
             let index = 0;
-
-            // Using interval to stagger downloads to prevent browser blocking multiple popups
             const interval = setInterval(() => {
                 if (index >= selectedFiles.length) {
                     clearInterval(interval);
@@ -379,17 +408,13 @@
                     return;
                 }
                 const file = selectedFiles[index].data;
-                let newName = file.name;
-                
-                if (findStr) newName = newName.split(findStr).join(replaceStr);
-                if (prefix) newName = `${prefix}${newName}`;
+                const newName = generateNewFileName(file, true);
                 
                 triggerDownload(file, newName);
                 index++;
             }, 300);
         });
 
-        // 2. Download as ZIP
         downloadZipBtn.addEventListener('click', async () => {
             const selectedFiles = currentFiles.filter(f => f.selected);
             
@@ -404,12 +429,8 @@
             }
 
             const prefix = prefixInput.value;
-            const findStr = findInput.value;
-            const replaceStr = replaceInput.value;
-            
             const zip = new JSZip();
             
-            // UI Feedback
             const originalContent = downloadZipBtn.innerHTML;
             downloadZipBtn.innerHTML = `
                 <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -418,17 +439,12 @@
             downloadZipBtn.disabled = true;
             downloadZipBtn.classList.add('opacity-75', 'cursor-not-allowed');
             
-            // Add files to ZIP
             selectedFiles.forEach(item => {
-                 let newName = item.data.name;
-                 if (findStr) newName = newName.split(findStr).join(replaceStr);
-                 if (prefix) newName = `${prefix}${newName}`;
-                 
+                 const newName = generateNewFileName(item.data, true);
                  zip.file(newName, item.data);
             });
             
             try {
-                // Generate and download
                 const content = await zip.generateAsync({ type: 'blob' });
                 const url = URL.createObjectURL(content);
                 const a = document.createElement('a');
@@ -444,7 +460,6 @@
                 console.error("Error generating zip", error);
                 showToast("Failed to generate ZIP file.", "error");
             } finally {
-                // Restore UI
                 downloadZipBtn.innerHTML = originalContent;
                 downloadZipBtn.disabled = false;
                 downloadZipBtn.classList.remove('opacity-75', 'cursor-not-allowed');
@@ -466,12 +481,10 @@
             
             document.getElementById('toastContainer').appendChild(toast);
             
-            // Animate In
             setTimeout(() => {
                 toast.classList.remove('translate-y-10', 'opacity-0');
             }, 10);
             
-            // Remove after 3s
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
